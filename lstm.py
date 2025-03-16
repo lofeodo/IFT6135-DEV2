@@ -56,11 +56,19 @@ class LSTMCell(nn.Module):
         # Concatenate input and previous hidden state along the feature dimension
         combined = torch.cat([x, h], dim=1)  # (batch_size, input_size + hidden_size)
 
-        # ==========================
-        # TODO: Write your code here
+
         # ==========================
 
-        raise NotImplementedError
+        forget_gate = torch.sigmoid(self.forget_gate(combined))
+        input_gate = torch.sigmoid(self.input_gate(combined))
+        output_gate = torch.sigmoid(self.output_gate(combined))
+        candidate_cell_state = torch.tanh(self.candidate_cell(combined))
+        cell_state = forget_gate * c + input_gate * candidate_cell_state
+        hidden_state = output_gate * torch.tanh(cell_state)
+
+        # ==========================
+
+        return hidden_state, cell_state
 
 ########################################################################################
 ########################################################################################
