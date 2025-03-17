@@ -209,9 +209,11 @@ class MultiHeadedAttention(nn.Module):
 
         # ==========================
         # TODO: Write your code here
-        # ==========================
+        # ==========================`
+        r = torch.reshape(tensor, (tensor.shape[0], tensor.shape[1], self.num_heads, tensor.shape[2] // self.num_heads))
+        p = r.permute(0, 2, 1, 3)
 
-        raise NotImplementedError
+        return p
 
     def merge_heads(self, tensor):
         """
@@ -238,8 +240,10 @@ class MultiHeadedAttention(nn.Module):
         # ==========================
         # TODO: Write your code here
         # ==========================
+        p = tensor.permute(0, 2, 1, 3)
+        c = torch.reshape(p, (p.shape[0], p.shape[1], p.shape[2] * p.shape[3]))
         
-        raise NotImplementedError
+        return c
 
     def forward(self,  queries: Tensor, keys: Tensor, values: Tensor):
         """
