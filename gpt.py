@@ -120,8 +120,13 @@ class MultiHeadedAttention(nn.Module):
         # ==========================
         # TODO: Write your code here
         # ==========================
+        A = torch.softmax(torch.matmul(queries, keys.permute(0, 1, 3, 2)) / torch.sqrt(self.head_size))
+        indices = [(i, j) for i in range(0, A.shape[2]) for j in range(i+1, A.shape[3])]
+        row_indices = [i[0] for i in indices]
+        col_indices = [i[1] for i in indices]
+        A[:,:,row_indices,col_indices] = float("-infinity")
 
-        raise NotImplementedError
+        return torch.softmax(A, dim=2)
 
     def apply_attention(self, queries, keys, values):
         """
