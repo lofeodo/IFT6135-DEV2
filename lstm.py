@@ -56,7 +56,6 @@ class LSTMCell(nn.Module):
         # Concatenate input and previous hidden state along the feature dimension
         combined = torch.cat([x, h], dim=1)  # (batch_size, input_size + hidden_size)
 
-
         # ==========================
 
         forget_gate = torch.sigmoid(self.forget_gate(combined))
@@ -126,8 +125,9 @@ class LSTM(nn.Module):
         if hx is None:
             # ==========================
             # same device, same type, same size as input tensor x
-            c_init, h_init = torch.zeros(self.num_layers, x.shape[0], self.hidden_size, dtype=x.dtype, device=x.device)
-            hx = h_init, c_init
+            h_init = torch.zeros(self.num_layers, batch_size, self.hidden_size, dtype=x.dtype, device=x.device)
+            c_init = torch.zeros(self.num_layers, batch_size, self.hidden_size, dtype=x.dtype, device=x.device)
+            h0, c0 = h_init, c_init
             # ==========================
         else:
             h0, c0 = hx  # (num_layers, batch_size, hidden_size), (num_layers, batch_size, hidden_size)
@@ -148,14 +148,8 @@ class LSTM(nn.Module):
                 # TODO: Write your code here
                 # ==========================
                 # Extract x_t from "output" tensor, and compute h_t, c_t using the LSTM "cell" based on x_t, h_t, and c_t
-
-                if layer_idx == 0:
-                    x_t = output[:,t,:]
-                else:
-                    x_t = h_t
-                    
+                x_t = output[:,t,:]
                 h_t, c_t = cell(x_t, (h_t, c_t))  # (batch_size, hidden_size), (batch_size, hidden_size)
-
                 layer_outputs.append(h_t.unsqueeze(1))  # (batch_size, 1, hidden_size)
             
             # Concatenate time outputs: (batch_size, seq_len, hidden_size)
@@ -243,9 +237,10 @@ class LSTMLM(nn.Module):
         # TODO: Write your code here
         # ==========================
         x_embed = self.embedding(x)
-        h, c = self.lstm(x_embed, hidden_states)
+        output, hx = self.lstm(x_embed, hidden_states)
+        h, c = hx
 
-        logits = self.classifier(h)
+        logits = self.classifier(output)
 
         return logits, (h, c)
 
