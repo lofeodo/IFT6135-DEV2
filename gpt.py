@@ -48,8 +48,11 @@ class LayerNorm(nn.Module):
         # ==========================
         # TODO: Write your code here
         # ==========================
+        mean = torch.mean(inputs, dim=-1, keepdim=True)
+        var = torch.var(inputs, dim=-1, keepdim=True, correction=0)
+        x_norm = (inputs - mean) / torch.sqrt(var + self.eps)
         
-        raise NotImplementedError
+        return x_norm * self.weight + self.bias
 
     def reset_parameters(self):
         nn.init.ones_(self.weight)
