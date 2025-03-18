@@ -187,8 +187,14 @@ class MultiHeadedAttention(nn.Module):
         # ==========================
         # TODO: Write your code here
         # ==========================
+        weights = self.get_attention_weights(queries, keys) # shape B,N,S,S
+        attended_values = torch.matmul(weights, values).permute(0,2,1,3) # shape B,N,S,H
+        outputs = torch.reshape(attended_values, 
+                                (attended_values.shape[0], 
+                                 attended_values.shape[1], 
+                                 attended_values.shape[2] * attended_values.shape[3]))
 
-        raise NotImplementedError
+        return outputs, weights
 
 
     def split_heads(self, tensor):
@@ -220,6 +226,7 @@ class MultiHeadedAttention(nn.Module):
 
         return p
 
+
     def merge_heads(self, tensor):
         """
         Merge the head vectors.
@@ -249,6 +256,7 @@ class MultiHeadedAttention(nn.Module):
         c = torch.reshape(p, (p.shape[0], p.shape[1], p.shape[2] * p.shape[3]))
         
         return c
+    
 
     def forward(self,  queries: Tensor, keys: Tensor, values: Tensor):
         """
