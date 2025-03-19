@@ -188,11 +188,8 @@ class MultiHeadedAttention(nn.Module):
         # TODO: Write your code here
         # ==========================
         weights = self.get_attention_weights(queries, keys)
-        print(weights.shape)
         attended_values = torch.matmul(weights, values)
-        print(attended_values.shape)
         outputs = self.merge_heads(attended_values)
-        print(outputs.shape)
 
         return outputs, weights
 
