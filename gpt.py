@@ -511,8 +511,12 @@ class GPTEmbedding(nn.Module):
         # ==========================
         # TODO: Write your code here
         # ==========================
+        position_encoding = self.position_encoding[:tokens.shape[1]].unsqueeze(0)
+        embedded_tokens = self.tokens(tokens)
+
+        embeddings = embedded_tokens + position_encoding
         
-        raise NotImplementedError
+        return embeddings
 
 ########################################################################################
 ########################################################################################
