@@ -484,15 +484,22 @@ class GPTEmbedding(nn.Module):
         # ==========================
         # TODO: Write your code here
         # ==========================
-        n_positions_tensor = torch.arange(n_positions).unsqueeze(1)
-        dimension_tensor = torch.arange(dimension).unsqueeze(0)
+        pos_indices = torch.arange(n_positions).unsqueeze(1)
+        dim_indices = torch.arange(dimension).unsqueeze(0)
+
+        exponent = torch.zeros(1, dimension)
+        exponent[0,0::2] = dim_indices[0, 0::2].float() / dimension
+        exponent[0,1::2] = (dim_indices[0,1::2].float() - 1) / dimension
+
+        denominator = 10000.0 ** exponent
+        values = pos_indices.float() / denominator
 
         PE = torch.zeros(n_positions, dimension)
-        PE[:,0::2] = torch.sin(n_positions_tensor.float() / (10000 ** ((dimension_tensor[:,0::2] // 2) / dimension)))
-        PE[:,1::2] = torch.sin(n_positions_tensor.float() / (10000 ** ((dimension_tensor[:,1::2] // 2) / dimension)))
+        PE[:,0::2] = torch.sin(values[:,0::2])
+        PE[:,1::2] = torch.cos(values[:,1::2])
 
         return PE
-
+    
     def forward(self, tokens: Tensor) -> Tensor:
         """
         Return the embeddings from a sequence of input tokens 
