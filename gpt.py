@@ -187,12 +187,9 @@ class MultiHeadedAttention(nn.Module):
         # ==========================
         # TODO: Write your code here
         # ==========================
-        weights = self.get_attention_weights(queries, keys) # shape B,N,S,S
-        attended_values = torch.matmul(weights, values).permute(0,2,1,3) # shape B,N,S,H
-        outputs = torch.reshape(attended_values, 
-                                (attended_values.shape[0], 
-                                 attended_values.shape[1], 
-                                 attended_values.shape[2] * attended_values.shape[3]))
+        weights = self.get_attention_weights(queries, keys)
+        attended_values = torch.matmul(weights, values)
+        outputs = self.merge_heads(attended_values)
 
         return outputs, weights
 
