@@ -481,9 +481,14 @@ class GPTEmbedding(nn.Module):
         # ==========================
         # TODO: Write your code here
         # ==========================
+        n_positions_tensor = torch.arange(n_positions).unsqueeze(1)
+        dimension_tensor = torch.arange(dimension).unsqueeze(0)
 
-        raise NotImplementedError
+        PE = torch.zeros(n_positions, dimension)
+        PE[:,0::2] = torch.sin(n_positions_tensor.float() / (10000 ** ((dimension_tensor[:,0::2] // 2) / dimension)))
+        PE[:,1::2] = torch.sin(n_positions_tensor.float() / (10000 ** ((dimension_tensor[:,1::2] // 2) / dimension)))
 
+        return PE
 
     def forward(self, tokens: Tensor) -> Tensor:
         """
