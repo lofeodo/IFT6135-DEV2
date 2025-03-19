@@ -126,7 +126,7 @@ class MultiHeadedAttention(nn.Module):
         col_indices = [i[1] for i in indices]
         A[:,:,row_indices,col_indices] = float("-infinity")
 
-        return torch.softmax(A, dim=2)
+        return torch.softmax(A, dim=-1)
 
     def apply_attention(self, queries, keys, values):
         """
@@ -188,8 +188,11 @@ class MultiHeadedAttention(nn.Module):
         # TODO: Write your code here
         # ==========================
         weights = self.get_attention_weights(queries, keys)
+        print(weights.shape)
         attended_values = torch.matmul(weights, values)
+        print(attended_values.shape)
         outputs = self.merge_heads(attended_values)
+        print(outputs.shape)
 
         return outputs, weights
 
