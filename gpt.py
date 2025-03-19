@@ -120,7 +120,7 @@ class MultiHeadedAttention(nn.Module):
         # ==========================
         # TODO: Write your code here
         # ==========================
-        A = torch.softmax(torch.matmul(queries, keys.permute(0, 1, 3, 2)) / torch.sqrt(self.head_size))
+        A = torch.matmul(queries, keys.permute(0, 1, 3, 2)) / math.sqrt(self.head_size)
         indices = [(i, j) for i in range(0, A.shape[2]) for j in range(i+1, A.shape[3])]
         row_indices = [i[0] for i in indices]
         col_indices = [i[1] for i in indices]
@@ -314,7 +314,13 @@ class MultiHeadedAttention(nn.Module):
         Q = self.W_Q(queries)
         K = self.W_K(keys)
         V = self.W_V(values)
+
+        Q = self.split_heads(Q)
+        K = self.split_heads(K)
+        V = self.split_heads(V)
+
         output, attn_weights = self.apply_attention(Q, K, V)
+        output = self.W_O(output)
         
         return output, attn_weights.clone().detach()
 
@@ -583,8 +589,13 @@ class GPT(nn.Module):
                 and 
                 (batch_size, num_layers, num_heads, sequence_length, sequence_length)
         """
+        embeddings = self.embedding(x)
 
-        raise NotImplementedError
+        output, (hidden_states, attentions) = self.decoder(embeddings)
+
+        logits = self.classifier(output)
+
+        return logits, (hidden_states, attentions)
 
 ########################################################################################
 ########################################################################################
