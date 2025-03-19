@@ -196,7 +196,6 @@ class MultiHeadedAttention(nn.Module):
 
         return outputs, weights
 
-
     def split_heads(self, tensor):
         """
         Split the head vectors.
@@ -225,7 +224,6 @@ class MultiHeadedAttention(nn.Module):
         p = r.permute(0, 2, 1, 3)
 
         return p
-
 
     def merge_heads(self, tensor):
         """
@@ -257,7 +255,6 @@ class MultiHeadedAttention(nn.Module):
         
         return c
     
-
     def forward(self,  queries: Tensor, keys: Tensor, values: Tensor):
         """
         Multi-headed attention.
@@ -314,8 +311,12 @@ class MultiHeadedAttention(nn.Module):
         # ==========================
         # TODO: Write your code here
         # ==========================
+        Q = self.W_Q(queries)
+        K = self.W_K(keys)
+        V = self.W_V(values)
+        output, attn_weights = self.apply_attention(Q, K, V)
         
-        raise NotImplementedError
+        return output, attn_weights.clone().detach()
 
         # Use clone().detach() to detach attn_weights from the computation graph
         # Since we don't need to backpropagate through them, we can detach them from the graph
