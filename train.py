@@ -280,6 +280,12 @@ class Arguments:
     weight_decay: float = 1e-0
 
     # Training
+    # n_steps: int = 3 # for testing
+    # eval_first: int = 1 # for testing
+    # eval_period: int = 1 # for testing
+    # print_step: int = 1 # for testing
+    # save_model_step: int = 1 # for testing
+    # save_statistic_step: int = 1 # for testing
     n_steps: int = 10**4 * 1 + 1
     eval_first: int = 10**2 * 1
     eval_period: int = 10**2 * 1
@@ -291,7 +297,7 @@ class Arguments:
     device: str = "cuda" if torch.cuda.is_available() else "cpu"
     exp_id: int = 0
     exp_name: str = "test"
-    log_dir: str = '../logs'
+    log_dir: str = 'logs'
     seed: int = 42    
     verbose: bool = True
 
@@ -303,7 +309,6 @@ if __name__ == "__main__":
     print("=="*60)
     #all_metrics, checkpoint_path = train(args)
 
-    args.n_steps = 10**3 * 1 + 1
     all_models_per_trials, all_metrics, all_checkpoint_paths = train_m_models(args, M=2, seeds=None)
     print("=="*60)
     print("Experiment finished.")
