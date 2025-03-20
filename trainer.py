@@ -50,36 +50,46 @@ def get_loss_and_accuracy(logits, targets, eq_positions, mask, reduction='mean')
         all valid RHS tokens are predicted correctly.
     """
     batch_size, seq_len, vocab_size = logits.shape
-    sequence_losses = torch.zeros(batch_size)
-    sequence_accuracies = torch.ones(batch_size)
-
-    for i in range(batch_size):
-        rhs_positions = torch.arange(seq_len)[eq_positions[i]+1:]
-        rhs_positions = rhs_positions[mask[i, eq_positions[i]+1:] == 1]
+    device = logits.device
+    
+    eq_positions = eq_positions.to(device)
+    mask = mask.to(device)
+    targets = targets.to(device)
+    
+    pos_indices = torch.arange(seq_len, device=device).unsqueeze(0).expand(batch_size, -1)
+    valid_positions = (pos_indices > eq_positions.unsqueeze(-1)) & (mask == 1)
+    
+    masked_logits = logits[valid_positions]
+    masked_targets = targets[valid_positions]
+    
+    log_probs = F.log_softmax(masked_logits, dim=-1)
+    token_losses = -log_probs.gather(1, masked_targets.unsqueeze(1)).squeeze(1)
+    
+    sequence_losses = torch.zeros(batch_size, device=device)
+    sequence_accuracies = torch.ones(batch_size, device=device)
+    
+    valid_counts = valid_positions.sum(dim=1)
+    valid_sequences = valid_counts > 0
+    
+    if valid_sequences.any():
+        splits = valid_counts[valid_sequences]
+        split_losses = torch.split(token_losses, splits.tolist())
+        split_preds = torch.split(masked_logits.argmax(dim=-1), splits.tolist())
+        split_targets = torch.split(masked_targets, splits.tolist())
         
-        if len(rhs_positions) == 0:
-            continue
-            
-        seq_logits = logits[i, rhs_positions]
-        seq_targets = targets[i, rhs_positions]
-        
-        log_probs = F.log_softmax(seq_logits, dim=-1)
-        token_losses = -log_probs.gather(1, seq_targets.unsqueeze(1)).squeeze(1)
-        sequence_losses[i] = token_losses.mean()
-        
-        predictions = seq_logits.argmax(dim=-1)
-        if not (predictions == seq_targets).all():
-            sequence_accuracies[i] = 0.0
-            
+        sequence_losses[valid_sequences] = torch.stack([x.mean() for x in split_losses])
+        sequence_accuracies[valid_sequences] = torch.stack([
+            (p == t).all().float() for p, t in zip(split_preds, split_targets)
+        ])
+    
     if reduction == 'mean':
-        valid_sequences = (sequence_losses != 0)
-        if valid_sequences.sum() > 0:
-            return (sequence_losses[valid_sequences].mean(),
-                   sequence_accuracies[valid_sequences].mean())
-        return sequence_losses.new_zeros(()), sequence_accuracies.new_zeros(())
+        if valid_sequences.any():
+            return (sequence_losses[valid_sequences].mean().cpu(),
+                   sequence_accuracies[valid_sequences].mean().cpu())
+        return sequence_losses.new_zeros(()).cpu(), sequence_accuracies.new_zeros(()).cpu()
     elif reduction == 'sum':
-        return sequence_losses.sum(), sequence_accuracies.sum()
-    return sequence_losses, sequence_accuracies
+        return sequence_losses.sum().cpu(), sequence_accuracies.sum().cpu()
+    return sequence_losses.cpu(), sequence_accuracies.cpu()
 
 
 ########################################################################################
