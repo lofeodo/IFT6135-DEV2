@@ -49,13 +49,48 @@ def get_loss_and_accuracy(logits, targets, eq_positions, mask, reduction='mean')
         The accuracy over the batch where a sequence is counted as correct only if 
         all valid RHS tokens are predicted correctly.
     """
-    # ==========================
-    # TODO: Write your code here
-    # ==========================
+    batch_size, seq_len, _ = logits.shape
+    device = logits.device
+    
+    pos_indices = torch.arange(seq_len, device=device).unsqueeze(0).expand(batch_size, -1)
+    
+    rhs_mask = (pos_indices > eq_positions.unsqueeze(1))
+    rhs_mask = rhs_mask & mask.bool()
+    
+    rhs_logits = logits[rhs_mask]
+    rhs_targets = targets[rhs_mask]
+    
+    log_probs = F.log_softmax(rhs_logits, dim=-1)
+    token_losses = -log_probs.gather(1, rhs_targets.unsqueeze(1)).squeeze(1)
+    valid_tokens_per_seq = rhs_mask.sum(dim=1).float()
+    
+    sequence_losses = torch.zeros(batch_size, device=device)
+    batch_indices = torch.nonzero(rhs_mask).select(1, 0)
+    
+    sequence_losses.scatter_add_(0, batch_indices, token_losses)
+    sequence_losses = sequence_losses / valid_tokens_per_seq.clamp(min=1e-12)
+    
+    predictions = logits.argmax(dim=-1)
+    
+    correct_predictions = (predictions == targets)
+    correct_predictions = correct_predictions & rhs_mask
+    sequence_accuracies = torch.ones(batch_size, device=device)
+    
+    for i in range(batch_size):
+        if valid_tokens_per_seq[i] > 0:
+            if not correct_predictions[i][rhs_mask[i]].all():
+                sequence_accuracies[i] = 0.0
+    
+    if reduction == 'mean':
+        valid_sequences = (valid_tokens_per_seq > 0)
+        if valid_sequences.sum() > 0:
+            return (sequence_losses[valid_sequences].mean(), 
+                   sequence_accuracies[valid_sequences].mean())
+        return sequence_losses.new_zeros(()), sequence_accuracies.new_zeros(())
+    elif reduction == 'sum':
+        return sequence_losses.sum(), sequence_accuracies.sum()
+    return sequence_losses, sequence_accuracies
 
-    raise NotImplementedError
-
-    return loss, accuracy
 
 ########################################################################################
 ########################################################################################
