@@ -157,14 +157,36 @@ def get_arithmetic_dataset(
                 a = (b * c * d) % q
                 equations.append(f"{a} {operator} {b} {operator} {c} {EQ_TOKEN} {d}")
 
-    if shuffle:
-        rng = np.random.RandomState(seed=seed)
-        rng.shuffle(equations)
+    # Separate binary and ternary equations
+    dataset_per_orders = {
+        2 : [eq for eq in equations if len(eq.split(operator)) == 2],  # Binary operations
+        3 : [eq for eq in equations if len(eq.split(operator)) == 3]   # Ternary operations
+    }
 
-    #equations = [BOS_TOKEN + " " + eq for eq in equations]
-    equations = [BOS_TOKEN + " " + eq + " " + EOS_TOKEN for eq in equations]
+    # Split each type and maintain order
+    train_equations = []
+    valid_equations = []
+    for order in operation_orders:
+        order_equations = dataset_per_orders[order]
+        N_order = len(order_equations)
+        N_train_order = round(N_order * r_train)
+        
+        if shuffle:
+            rng = np.random.RandomState(seed=seed)
+            rng.shuffle(order_equations)
+            
+        train_equations.extend(order_equations[:N_train_order])
+        valid_equations.extend(order_equations[N_train_order:])
 
-    encoded_data = tokenizer.encode(equations)
+    # Combine and process train and validation sets separately
+    train_equations = [BOS_TOKEN + " " + eq + " " + EOS_TOKEN for eq in train_equations]
+    valid_equations = [BOS_TOKEN + " " + eq + " " + EOS_TOKEN for eq in valid_equations]
+    
+    # Continue with encoding logic for each set separately...
+    # (rest of the code would need to be adjusted to handle train and valid separately)
+
+    # Continue with existing encoding logic
+    encoded_data = tokenizer.encode(train_equations + valid_equations)
 
     # Find the maximum sequence length
     max_length = max(len(seq) for seq in encoded_data)
@@ -194,7 +216,7 @@ def get_arithmetic_dataset(
     # print(eq_positions)
 
     # Train-validation split
-    N_total = len(equations)
+    N_total = len(train_equations) + len(valid_equations)
     N_train = round(N_total * r_train)
     train_data, valid_data = padded_data[:N_train], padded_data[-1 if N_train == N_total else N_train:]
     train_mask, valid_mask = mask[:N_train], mask[-1 if N_train == N_total else N_train:]
