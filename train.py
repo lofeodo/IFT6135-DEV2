@@ -307,10 +307,97 @@ class Arguments:
 ########################################################################################
 
 if __name__ == "__main__":
-    args = Arguments()
     print("=="*60)
     #all_metrics, checkpoint_path = train(args)
 
-    all_models_per_trials, all_metrics, all_checkpoint_paths = train_m_models(args, M=2, seeds=None)
-    print("=="*60)
-    print("Experiment finished.")
+    seeds = [0, 42]
+    models = [
+        "lstm",
+        "gpt"
+    ]
+    
+    """
+    # Q1
+    args = Arguments()
+    for model in models:
+        args.model = model
+        args.log_dir = f'logs/Q1/{model}'
+        all_models_per_trials, all_metrics, all_checkpoint_paths = train_m_models(args, seeds=seeds)
+        print("=="*60)
+        print("Experiment finished.")
+        
+    # Q3
+    args = Arguments()
+    r_trains = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
+    for model in models:
+        args.model = model
+        for r_train in r_trains:
+            args.r_train = r_train
+            args.log_dir = f'logs/Q3/{args.model}/{args.r_train}'
+            all_models_per_trials, all_metrics, all_checkpoint_paths = train_m_models(args, seeds=seeds)
+            print("=="*60)
+            print("Experiment finished.")
+    """
+    # Q4
+    args = Arguments()
+    args.p = 11
+    operation_orders = [2, 3]
+    for model in models:
+        args.model = model
+        for operation_order in operation_orders:
+            args.operation_orders = operation_order
+            args.log_dir = f'logs/Q4/{args.model}/{args.operation_orders}'
+            all_models_per_trials, all_metrics, all_checkpoint_paths = train_m_models(args, seeds=seeds)
+            print("=="*60)
+            print("Experiment finished.")
+
+    # Q5
+    args = Arguments()
+    layer_vals = [1, 2, 3]
+    embedding_sizes = [2**6, 2**7, 2**8]  # these are your 'd' values
+
+    for model in models:
+        args.model = model
+        for num_layers in layer_vals:  # L values
+            args.num_layers = num_layers
+            for d in embedding_sizes:  # d values
+                args.embedding_size = d
+                if args.model == "lstm":
+                    args.hidden_size = d  # For LSTM, explicitly set hidden_size = d
+                # For GPT, no need to set hidden_size as it uses embedding_size throughout
+                
+                args.log_dir = f'logs/Q5/{args.model}/{num_layers}/{d}'
+                all_models_per_trials, all_metrics, all_checkpoint_paths = train_m_models(args, seeds=seeds)
+                print("=="*60)
+                print("Experiment finished.")
+
+    # Q6
+    args = Arguments()
+    batch_sizes = [2**5, 2**6, 2**7, 2**8, 2**9]
+    n_steps = 10**4 * 1 + 1
+    alphas = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+    for model in models:
+        args.model = model
+        for batch_size in batch_sizes:
+            for alpha in alphas:
+                args.step_size = alpha * n_steps
+                args.train_batch_size = batch_size
+                args.eval_batch_size = batch_size
+                args.log_dir = f'logs/Q6/{args.model}/{args.train_batch_size}/{alpha}'
+                all_models_per_trials, all_metrics, all_checkpoint_paths = train_m_models(args, seeds=seeds)
+                print("=="*60)
+                print("Experiment finished.")
+
+    # Q7
+    args = Arguments()
+    weight_decays = [1/4, 1/2, 3/4, 1]
+    args.model = "lstm"
+    for weight_decay in weight_decays:
+        args.weight_decay = weight_decay
+        args.log_dir = f'logs/Q7/{args.model}/{args.weight_decay}'
+        all_models_per_trials, all_metrics, all_checkpoint_paths = train_m_models(args, seeds=seeds)
+        print("=="*60)
+        print("Experiment finished.")
+
+    # Q8
+    args = Arguments()

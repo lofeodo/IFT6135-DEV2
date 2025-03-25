@@ -1,6 +1,7 @@
 import torch
 from torch import Tensor
 import torch.nn.functional as F
+import torch.nn.utils as nn_utils
 
 from tqdm import tqdm
 import os
@@ -110,12 +111,15 @@ def eval_model(model, loader, device) :
         loss += batch_loss.item() * batch_x.shape[0]
         acc += batch_acc * batch_x.shape[0]
 
+    # Calculate L2 norm of model parameters θ^(t)
+    params_vector = nn_utils.parameters_to_vector(model.parameters())
+    l2_norm = params_vector.norm(2).item()
 
     ##########
     # You can add more metrics in the dictionary (e.g., l2 norm of the parameters, etc.) 
     ##########
 
-    return {"loss" : loss / n, "accuracy": acc / n}
+    return {"loss" : loss / n, "accuracy": acc / n, "l2_norm": l2_norm}
     
 ########################################################################################
 ########################################################################################
