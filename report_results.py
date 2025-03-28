@@ -1,3 +1,5 @@
+from lstm import LSTMLM
+from gpt import GPT
 import os
 import pandas as pd
 import torch
@@ -6,6 +8,7 @@ import numpy as np
 import argparse
 from pathlib import Path
 from plotter import plot_loss_accuracy, plot_comparative_performance, plot_loss_accuracy_q3_a, plot_loss_accuracy_q3_b, plot_loss_accuracy_q4, plot_loss_accuracy_q5_a, plot_loss_accuracy_q5_b, plot_loss_accuracy_q6_a, plot_loss_accuracy_q6_b
+from train import Arguments
 
 def fetch_metrics(log_dir):
     """Recursively find all test.pth files in log_dir and collect metrics"""
@@ -41,13 +44,14 @@ def fetch_metrics_for_parameter(model_dir, parameter_value):
     metrics_dict = {
         "train": {
             "loss": [],
-            "accuracy": []
+            "accuracy": [],
+            "l2_norm": []
         },
         "test": {
             "loss": [],
-            "accuracy": []
+            "accuracy": [],
+            "l2_norm": []
         },
-        "l2_norm": [],
         "all_steps": []
     }
     
@@ -63,9 +67,13 @@ def fetch_metrics_for_parameter(model_dir, parameter_value):
                 metrics_dict["all_steps"].append(all_metrics["all_steps"])
                 metrics_dict["train"]["loss"].append(all_metrics["train"]["loss"])
                 metrics_dict["train"]["accuracy"].append(all_metrics["train"]["accuracy"])
-                metrics_dict["test"]["loss"].append(all_metrics["test"]["loss"])
+                metrics_dict["test"]["loss"].append(all_metrics["test"]["loss"]) 
                 metrics_dict["test"]["accuracy"].append(all_metrics["test"]["accuracy"])
-                metrics_dict["l2_norm"].append(all_metrics["l2_norm"])
+                
+                # Only append l2_norm if it exists in the metrics
+                if "l2_norm" in all_metrics["train"] and "l2_norm" in all_metrics["test"]:
+                    metrics_dict["train"]["l2_norm"].append(all_metrics["train"]["l2_norm"])
+                    metrics_dict["test"]["l2_norm"].append(all_metrics["test"]["l2_norm"])
     return metrics_dict
 
 
@@ -206,14 +214,16 @@ def q5(log_dir, results_dir):
         model_results = []
 
         for layer in layer_vals:
-            model_dir = model_dir / str(layer)
+            current_model_dir = model_dir / str(layer)
             for d in embedding_sizes:
-                metrics_per_embedding_size[d] = fetch_metrics_for_parameter(model_dir, d)
+                metrics_per_embedding_size[d] = fetch_metrics_for_parameter(current_model_dir, d)
                 metrics_summary = get_extrema_performance_steps_per_trials(metrics_per_embedding_size[d])
+                parameters_count = get_model_parameters_count("Q5", model, layer, d)
                 result = {
                     "Model": model,
                     "Layer": layer,
                     "Embedding Size": d,
+                    "Parameters": parameters_count,
                     "L_train_min": metrics_summary['min_train_loss'],
                     "L_val_min": metrics_summary['min_test_loss'],
                     "A_train_max": metrics_summary['max_train_accuracy'],
@@ -251,13 +261,14 @@ def q6(log_dir, results_dir):
 
     for model in models:
         metrics_per_batch_size = {}
-        metrics_per_alpha = {}
 
         for batch_size in batch_sizes:
             model_dir = log_dir / model / str(batch_size)
+            metrics_per_batch_size[batch_size] = fetch_metrics(model_dir)
+            metrics_per_alpha = {}
             for alpha in alphas:
-                metrics_per_alpha[alpha] = fetch_metrics_for_parameter(model_dir, alpha)
-                metrics_summary = get_extrema_performance_steps_per_trials(metrics_per_alpha[alpha])
+                metrics_summary = get_extrema_performance_steps_per_trials(metrics_per_batch_size[batch_size], T_max=alpha*10000)
+                metrics_per_alpha[alpha] = metrics_summary
                 result = {
                     "Model": model,
                     "Batch Size": batch_size,
@@ -278,7 +289,7 @@ def q6(log_dir, results_dir):
             metrics_per_batch_size[batch_size] = metrics_per_alpha
 
         plot_loss_accuracy_q6_a(metrics_per_batch_size, model, results_dir / "a")
-        plot_loss_accuracy_q6_b(metrics_per_batch_size, model, results_dir / "b")
+        plot_loss_accuracy_q6_b(results, model, results_dir / "b")
 
     df = pd.DataFrame(results)
     return df
@@ -296,6 +307,77 @@ def q7(log_dir, results_dir):
 
         for weight_decay in weight_decays:
             metrics_per_weight_decay[weight_decay] = fetch_metrics_for_parameter(model_dir, weight_decay)
+
+def get_model_parameters_count(question, model, layer, d):
+    """
+    Counts the number of trainable parameters (P) in a model checkpoint,
+    excluding embeddings and positional embeddings.
+    
+    Args:
+        question (str): Question number (e.g. Q5)
+        model (str): Model name (e.g. lstm, gpt)
+        layer (int): Number of layers
+        d (int): Embedding size
+        
+    Returns:
+        dict: Dictionary containing:
+            - total_params: Total number of parameters requiring gradients
+            - embedding_params: Number of parameters in embedding layers
+            - P: Number of model parameters excluding embeddings
+    """
+    # Construct path to checkpoint
+    checkpoint_dir = Path(f'logs/{question}/{model}/{layer}/{d}/0')
+    # Find test state file starting with test_state_10000
+    checkpoint_file = next(checkpoint_dir.glob('test_state_10000*'))
+    # Load the checkpoint
+    args = Arguments()
+    args.model = model
+    args.num_layers = layer
+    args.embedding_size = d
+    if args.model == "lstm":
+        args.hidden_size = d
+    
+    if args.model == "lstm":
+        model = LSTMLM(
+            vocabulary_size = 36, # Minimum vocab size needed (just need 2 tokens)
+            embedding_size = args.embedding_size,
+            hidden_size = args.hidden_size,
+            num_layers = args.num_layers,
+            dropout = args.dropout,
+            padding_index = 1, # Use 1 as padding index
+            bias_lstm = True,
+            bias_classifier = args.bias_classifier,
+            share_embeddings = args.share_embeddings
+        )
+    elif args.model == "gpt":
+        model = GPT(
+            num_heads = args.num_heads,
+            num_layers = args.num_layers,
+            embedding_size = args.embedding_size,
+            vocabulary_size = 36, # Minimum vocab size needed (just need 2 tokens)
+            sequence_length = 6, # Minimum sequence length needed
+            multiplier = 4,
+            dropout = args.dropout,
+            non_linearity = "gelu",
+            padding_index = 1, # Use 1 as padding index
+            bias_attention = True,
+            bias_classifier = args.bias_classifier,
+            share_embeddings = args.share_embeddings
+        )
+    
+    # Load the state dict
+    checkpoint = torch.load(checkpoint_file, map_location='cpu')
+    model.load_state_dict(checkpoint['model_state_dict'])
+    
+    # Calculate parameters exactly as shown in the image
+    n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    n_params_embeddings = sum(
+        p.numel() for p in model.embedding.parameters() 
+        if p.requires_grad
+    )
+    P = n_params - n_params_embeddings
+    
+    return P
 
 def report_results(question):
     results_dir = Path(f'results/{question}')

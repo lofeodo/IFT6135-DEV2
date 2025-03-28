@@ -337,7 +337,6 @@ if __name__ == "__main__":
             all_models_per_trials, all_metrics, all_checkpoint_paths = train_m_models(args, seeds=seeds)
             print("=="*60)
             print("Experiment finished.")
-    """
     # Q4
     args = Arguments()
     args.p = 11
@@ -371,22 +370,22 @@ if __name__ == "__main__":
                 print("=="*60)
                 print("Experiment finished.")
 
+    """
     # Q6
     args = Arguments()
     batch_sizes = [2**5, 2**6, 2**7, 2**8, 2**9]
-    n_steps = 10**4 * 1 + 1
-    alphas = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
     for model in models:
         args.model = model
         for batch_size in batch_sizes:
-            for alpha in alphas:
-                args.step_size = alpha * n_steps
-                args.train_batch_size = batch_size
-                args.eval_batch_size = batch_size
-                args.log_dir = f'logs/Q6/{args.model}/{args.train_batch_size}/{alpha}'
-                all_models_per_trials, all_metrics, all_checkpoint_paths = train_m_models(args, seeds=seeds)
-                print("=="*60)
-                print("Experiment finished.")
+            args.save_model_step = 0.1 * args.n_steps
+            args.save_statistic_step = 0.01 * args.n_steps
+            print(f"===== save_model_step: {args.save_model_step} =====")
+            args.train_batch_size = batch_size
+            args.eval_batch_size = batch_size
+            args.log_dir = f'logs/Q6/{args.model}/{args.train_batch_size}'
+            all_models_per_trials, all_metrics, all_checkpoint_paths = train_m_models(args, seeds=seeds)
+            print("=="*60)
+            print("Experiment finished.")
 
     # Q7
     args = Arguments()
