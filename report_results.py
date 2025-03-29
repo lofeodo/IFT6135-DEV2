@@ -7,7 +7,7 @@ from checkpointing import get_extrema_performance_steps_per_trials
 import numpy as np
 import argparse
 from pathlib import Path
-from plotter import plot_loss_accuracy, plot_comparative_performance, plot_loss_accuracy_q3_a, plot_loss_accuracy_q3_b, plot_loss_accuracy_q4, plot_loss_accuracy_q5_a, plot_loss_accuracy_q5_b, plot_loss_accuracy_q6_a, plot_loss_accuracy_q6_b
+from plotter import plot_loss_accuracy, plot_comparative_performance, plot_loss_accuracy_q3_a, plot_loss_accuracy_q3_b, plot_loss_accuracy_q4, plot_loss_accuracy_q5_a, plot_loss_accuracy_q5_b, plot_loss_accuracy_q6_a, plot_loss_accuracy_q6_b, plot_loss_accuracy_q7_a, plot_loss_accuracy_q7_b 
 from train import Arguments
 
 def fetch_metrics(log_dir):
@@ -289,24 +289,46 @@ def q6(log_dir, results_dir):
             metrics_per_batch_size[batch_size] = metrics_per_alpha
 
         plot_loss_accuracy_q6_a(metrics_per_batch_size, model, results_dir / "a")
-        plot_loss_accuracy_q6_b(results, model, results_dir / "b")
+        plot_loss_accuracy_q6_b(metrics_per_batch_size, model, results_dir / "b")
 
     df = pd.DataFrame(results)
     return df
 
 def q7(log_dir, results_dir):
     """Q7-specific implementation"""
-    models = [d.name for d in log_dir.iterdir() if d.is_dir()]
+    log_dir = log_dir / "lstm"
+    weight_decays = [1/4, 1/2, 3/4, 1]
     results = []
 
-    weight_decays = [1/4, 1/2, 3/4, 1]
+    metrics_per_weight_decay = {}
 
-    for model in models:
-        model_dir = log_dir / model
-        metrics_per_weight_decay = {}
+    for weight_decay in weight_decays:
+        metrics_per_weight_decay[weight_decay] = fetch_metrics_for_parameter(log_dir, weight_decay)
+        metrics_summary = get_extrema_performance_steps_per_trials(metrics_per_weight_decay[weight_decay])
+        metrics_per_weight_decay[weight_decay].update(metrics_summary)
+        result = {
+            "Model": "lstm",
+            "Weight Decay": weight_decay,
+            "l2_norm_train": metrics_per_weight_decay[weight_decay]["train"]["l2_norm"],
+            "l2_norm_test": metrics_per_weight_decay[weight_decay]["test"]["l2_norm"],
+            "L_train": f"{metrics_summary['min_train_loss']:.2e} ± {metrics_summary['min_train_loss_std']:.2e}",
+            "L_val": f"{metrics_summary['min_test_loss']:.2e} ± {metrics_summary['min_test_loss_std']:.2e}",
+            "A_train": f"{metrics_summary['max_train_accuracy']:.2e} ± {metrics_summary['max_train_accuracy_std']:.2e}",
+            "A_val": f"{metrics_summary['max_test_accuracy']:.2e} ± {metrics_summary['max_test_accuracy_std']:.2e}",
+            "tf(L_train)": f"{metrics_summary['min_train_loss_step']:.2f}",
+            "tf(L_val)": f"{metrics_summary['min_test_loss_step']:.2f}",
+            "tf(A_train)": f"{metrics_summary['max_train_accuracy_step']:.2f}",
+            "tf(A_val)": f"{metrics_summary['max_test_accuracy_step']:.2f}",
+            "dt(L)": f"{metrics_summary['min_test_loss_step'] - metrics_summary['min_train_loss_step']:.2f}",
+            "dt(A)": f"{metrics_summary['max_test_accuracy_step'] - metrics_summary['max_train_accuracy_step']:.2f}"
+        }
+        results.append(result)
 
-        for weight_decay in weight_decays:
-            metrics_per_weight_decay[weight_decay] = fetch_metrics_for_parameter(model_dir, weight_decay)
+    #plot_loss_accuracy_q7_a(metrics_per_weight_decay, results_dir / "a")
+    plot_loss_accuracy_q7_b(metrics_per_weight_decay, results_dir / "b")
+
+    df = pd.DataFrame(results)
+    return df
 
 def get_model_parameters_count(question, model, layer, d):
     """
