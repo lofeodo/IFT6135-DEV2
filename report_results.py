@@ -65,7 +65,7 @@ def fetch_metrics_for_parameter(model_dir, parameter_value):
             test_file = seed_dir / 'test.pth'
             if test_file.exists():
                 all_metrics = torch.load(test_file, map_location='cpu')
-                print(f"Loading {test_file}")
+                #print(f"Loading {test_file}")
                 
                 metrics_dict["all_steps"].append(all_metrics["all_steps"])
                 metrics_dict["train"]["loss"].append(all_metrics["train"]["loss"])
@@ -213,13 +213,16 @@ def q5(log_dir, results_dir):
     for model in models:
         model_dir = log_dir / model
         metrics_per_layer = {}
-        metrics_per_embedding_size = {}
         model_results = []
 
         for layer in layer_vals:
             current_model_dir = model_dir / str(layer)
+            metrics_per_embedding_size = {}
+            
             for d in embedding_sizes:
+                print(f"Fetching metrics for {model}, layer {layer}, embedding size {d} at {current_model_dir}")
                 metrics_per_embedding_size[d] = fetch_metrics_for_parameter(current_model_dir, d)
+                print(f"train loss at step 50: {metrics_per_embedding_size[d]['train']['loss'][0][50]}")
                 metrics_summary = get_extrema_performance_steps_per_trials(metrics_per_embedding_size[d])
                 parameters_count = get_model_parameters_count("Q5", model, layer, d)
                 result = {
@@ -245,7 +248,8 @@ def q5(log_dir, results_dir):
                 model_results.append(result)
             
             metrics_per_layer[layer] = metrics_per_embedding_size
-            results.extend(model_results)
+            
+        results.extend(model_results)
 
         plot_loss_accuracy_q5_a(metrics_per_layer, model, results_dir / "a" )
         plot_loss_accuracy_q5_b(model_results, model, results_dir / "b")

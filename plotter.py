@@ -478,92 +478,102 @@ def plot_loss_accuracy_q4(metrics_per_order, model_name, results_dir):
 
 def plot_loss_accuracy_q5_a(metrics_per_layer, model_name, results_dir):
     """Plot training and validation curves for Q5, with one combined plot per layer."""
-    # Create results directory if it doesn't exist
     results_dir.mkdir(parents=True, exist_ok=True)
     
-    width = 10  # Reduced width
-    height = 6
+    width = 20
+    height = 8
     
-    # Create color map for different embedding sizes
     layer_vals = sorted(metrics_per_layer.keys())
     embedding_sizes = sorted(metrics_per_layer[layer_vals[0]].keys())
-    colors = plt.cm.viridis(np.linspace(0, 1, len(embedding_sizes)))
     
-    # For each layer value, create one plot with both loss and accuracy
+    # Create normalization for the colorbars
+    norm = plt.Normalize(min(np.log2(embedding_sizes)), max(np.log2(embedding_sizes)))
+    
     for layer in layer_vals:
         fig = plt.figure(figsize=(width, height))
         ax1 = fig.add_subplot(111)
-        ax2 = ax1.twinx()  # Create second y-axis
+        ax2 = ax1.twinx()
+        
+        # Create ScalarMappables for the colorbars
+        loss_cmap = plt.cm.viridis
+        acc_cmap = plt.cm.plasma
+        loss_sm = plt.cm.ScalarMappable(norm=norm, cmap=loss_cmap)
+        acc_sm = plt.cm.ScalarMappable(norm=norm, cmap=acc_cmap)
         
         # Plot losses and accuracies for each embedding size
-        for d, color in zip(embedding_sizes, colors):
+        for d in embedding_sizes:
             metrics = metrics_per_layer[layer][d]
             all_steps = np.array(metrics['all_steps'][0])
             
-            # Get metrics
+            # Get and calculate metrics
             train_losses = np.array(metrics['train']['loss'])
             test_losses = np.array(metrics['test']['loss'])
             train_accs = np.array(metrics['train']['accuracy'])
             test_accs = np.array(metrics['test']['accuracy'])
             
-            # Calculate means
             train_loss_mean = np.mean(train_losses, axis=0)
             test_loss_mean = np.mean(test_losses, axis=0)
             train_acc_mean = np.mean(train_accs, axis=0)
             test_acc_mean = np.mean(test_accs, axis=0)
             
-            # Calculate standard deviations
             train_loss_std = np.std(train_losses, axis=0)
             test_loss_std = np.std(test_losses, axis=0)
             train_acc_std = np.std(train_accs, axis=0)
             test_acc_std = np.std(test_accs, axis=0)
             
-            d_exp = int(np.log2(d))
+            d_exp = np.log2(d)
+            loss_color = loss_cmap(norm(d_exp))
+            acc_color = acc_cmap(norm(d_exp))
             
-            # Plot losses on left y-axis
-            ax1.plot(all_steps, train_loss_mean, '-', color=color, 
-                    label=f'd = 2^{d_exp} (train loss)', lw=2.0)
-            ax1.plot(all_steps, test_loss_mean, '--', color=color,
-                    label=f'd = 2^{d_exp} (val loss)', lw=2.0)
+            # Plot losses
+            ax1.plot(all_steps, train_loss_mean, '-', color=loss_color, 
+                    label=f'd = 2^{int(d_exp)} (train)', lw=2)
+            ax1.plot(all_steps, test_loss_mean, '--', color=loss_color,
+                    label=f'd = 2^{int(d_exp)} (val)', lw=2)
             ax1.fill_between(all_steps, train_loss_mean-train_loss_std, 
-                           train_loss_mean+train_loss_std, color=color, alpha=0.2)
+                           train_loss_mean+train_loss_std, color=loss_color, alpha=0.075)
             ax1.fill_between(all_steps, test_loss_mean-test_loss_std,
-                           test_loss_mean+test_loss_std, color=color, alpha=0.2)
+                           test_loss_mean+test_loss_std, color=loss_color, alpha=0.075)
             
-            # Plot accuracies on right y-axis
-            ax2.plot(all_steps, train_acc_mean, '-.', color=color,
-                    label=f'd = 2^{d_exp} (train acc)', lw=2.0)
-            ax2.plot(all_steps, test_acc_mean, ':', color=color,
-                    label=f'd = 2^{d_exp} (val acc)', lw=2.0)
+            # Plot accuracies
+            ax2.plot(all_steps, train_acc_mean, '-', color=acc_color,
+                    label=f'd = 2^{int(d_exp)} (train)', lw=2)
+            ax2.plot(all_steps, test_acc_mean, '--', color=acc_color,
+                    label=f'd = 2^{int(d_exp)} (val)', lw=2)
             ax2.fill_between(all_steps, train_acc_mean-train_acc_std,
-                           train_acc_mean+train_acc_std, color=color, alpha=0.2)
+                           train_acc_mean+train_acc_std, color=acc_color, alpha=0.075)
             ax2.fill_between(all_steps, test_acc_mean-test_acc_std,
-                           test_acc_mean+test_acc_std, color=color, alpha=0.2)
+                           test_acc_mean+test_acc_std, color=acc_color, alpha=0.075)
         
         # Adjust scales and labels
         ax1.set_yscale('log')
         ax1.set_xlabel('Training Steps', fontsize=12)
         ax1.set_ylabel('Loss', fontsize=12)
         ax2.set_ylabel('Accuracy', fontsize=12)
-        ax2.set_ylim([0, 1.05])  # Set fixed y-range for accuracy
+        ax2.set_ylim([0, 1.02])
+        ax1.set_xlim([0, 10000])
+        ax2.set_xlim([0, 10000])
         
-        # Move legend outside to the right
-        lines1, labels1 = ax1.get_legend_handles_labels()
-        lines2, labels2 = ax2.get_legend_handles_labels()
-        ax1.legend(lines1 + lines2, labels1 + labels2, 
-                  fontsize=10, bbox_to_anchor=(1.15, 1), loc='upper left')
+        # Add colorbars with integer ticks
+        cbar1 = fig.colorbar(loss_sm, ax=ax1, location='right', pad=0.15, label='Embedding Size (log2)',
+                           ticks=range(int(min(np.log2(embedding_sizes))), int(max(np.log2(embedding_sizes)))+1))
+        cbar2 = fig.colorbar(acc_sm, ax=ax2, location='right', pad=0.05, label='Embedding Size (log2)',
+                           ticks=range(int(min(np.log2(embedding_sizes))), int(max(np.log2(embedding_sizes)))+1))
         
-        # Add grid and adjust layout
-        ax1.grid(True, alpha=0.3)
+        # Add legend for line styles only
+        lines1 = [Line2D([0], [0], color='gray', linestyle='-', label='Train'),
+                 Line2D([0], [0], color='gray', linestyle='--', label='Validation')]
+        ax1.legend(handles=lines1, fontsize=10, bbox_to_anchor=(1.13, 1), loc='upper left')
+        
+        ax1.grid(True, alpha=0.2)
         plt.title(f'Training Metrics vs Steps for {model_name.upper()} (L={layer})', 
-                 fontsize=12, pad=10)
+                 fontsize=14, pad=10)
         
-        # Adjust layout to minimize empty space
         plt.tight_layout()
         plt.savefig(results_dir / f'{model_name.upper()}_Q5_L{layer}_combined.png', 
-                   dpi=300, bbox_inches='tight', pad_inches=0.1)
+                   dpi=300, bbox_inches='tight', pad_inches=0.2)
         plt.close()
-        
+
 def plot_loss_accuracy_q5_b(results, model_name, results_dir):
     """Plot training and validation curves for Q5, with separate figures for each metric, as a function of embedding size d."""
     # Create results directory if it doesn't exist
