@@ -1,3 +1,4 @@
+from torch.utils.data import DataLoader
 from lstm import LSTMLM
 from gpt import GPT
 import os
@@ -9,6 +10,8 @@ import argparse
 from pathlib import Path
 from plotter import plot_loss_accuracy, plot_comparative_performance, plot_loss_accuracy_q3_a, plot_loss_accuracy_q3_b, plot_loss_accuracy_q4, plot_loss_accuracy_q5_a, plot_loss_accuracy_q5_b, plot_loss_accuracy_q6_a, plot_loss_accuracy_q6_b, plot_loss_accuracy_q7_a, plot_loss_accuracy_q7_b 
 from train import Arguments
+from data import get_arithmetic_dataset
+import matplotlib.pyplot as plt
 
 def fetch_metrics(log_dir):
     """Recursively find all test.pth files in log_dir and collect metrics"""
@@ -330,6 +333,102 @@ def q7(log_dir, results_dir):
     df = pd.DataFrame(results)
     return df
 
+def q8(results_dir, model_path="logs/Q1/gpt/0/test_state_10000_acc=1.0_loss=0.0006593060679733753.pth"):
+    """Plot attention weights for GPT model on sample inputs."""
+    # Create results directory if it doesn't exist
+    results_dir = Path(results_dir)
+    results_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Get tokenizer and create dataset
+    args = Arguments()
+    (train_dataset, valid_dataset), tokenizer, MAX_LENGTH, padding_index = get_arithmetic_dataset(
+        args.p, args.p, args.operator, args.r_train, args.operation_orders, is_symmetric=False, shuffle=True, seed=args.seed
+    )
+    
+    # Initialize model with default arguments
+    model = GPT(
+            num_heads = args.num_heads, 
+            num_layers = args.num_layers,
+            embedding_size = args.embedding_size,
+            vocabulary_size = len(tokenizer),
+            sequence_length = MAX_LENGTH,
+            multiplier = 4,
+            dropout = args.dropout,
+            non_linearity = "gelu",
+            padding_index = padding_index,
+            bias_attention = True,
+            bias_classifier = args.bias_classifier,
+            share_embeddings = args.share_embeddings
+        )
+    
+    # Load the state dict
+    checkpoint = torch.load(model_path, map_location='cpu')
+    model.load_state_dict(checkpoint['model_state_dict'])
+    model.eval()
+    
+    # Get 2 samples from training dataset using dataloader
+    train_dataloader = DataLoader(
+        train_dataset,
+        batch_size=2,
+        shuffle=True,
+        num_workers=0
+    )
+    samples = []
+    batch_x, batch_y, _, _ = next(iter(train_dataloader))
+    for x in batch_x:
+        sample = tokenizer.decode(x)
+        samples.append(sample)
+    
+    for idx, sample in enumerate(samples):
+        # Tokenize input
+        tokens = tokenizer.encode(sample)
+        x = torch.tensor(tokens).unsqueeze(0).long()  # Add batch dimension using unsqueeze instead of list
+        
+        # Get model outputs with attention weights
+        with torch.no_grad():
+            logits, (hidden_states, attentions) = model(x)
+        
+        # Extract attention weights
+        # attentions shape: (batch_size, num_layers, num_heads, seq_len, seq_len)
+        attentions = attentions.squeeze(0)  # Remove batch dimension
+        num_layers, num_heads, seq_len, _ = attentions.shape
+        
+        # Create subplot grid
+        fig, axes = plt.subplots(num_layers, num_heads, 
+                                figsize=(4*num_heads, 4*num_layers),
+                                squeeze=False)
+        
+        # Plot attention weights for each layer and head
+        for layer in range(num_layers):
+            for head in range(num_heads):
+                ax = axes[layer, head]
+                
+                # Plot attention weights as heatmap
+                im = ax.imshow(attentions[layer, head].cpu(), 
+                             cmap='viridis',
+                             vmin=0, vmax=1)
+                
+                # Add colorbar
+                plt.colorbar(im, ax=ax)
+                
+                # Set title and labels
+                ax.set_title(f'Layer {layer+1}, Head {head+1}')
+                ax.set_xticks(range(seq_len))
+                ax.set_yticks(range(seq_len))
+                
+                # Add token labels
+                tokens_list = [tokenizer.decode(torch.tensor([t]).long()) for t in tokens]
+                ax.set_xticklabels(tokens_list, rotation=45)
+                ax.set_yticklabels(tokens_list)
+                
+        plt.suptitle(f'Attention Weights for Input: "{sample}"')
+        plt.tight_layout()
+        
+        # Save the figure
+        plt.savefig(results_dir / f'attention_weights_sample_{idx+1}.png',
+                   dpi=300, bbox_inches='tight')
+        plt.close()
+
 def get_model_parameters_count(question, model, layer, d):
     """
     Counts the number of trainable parameters (P) in a model checkpoint,
@@ -419,6 +518,9 @@ def report_results(question):
         df = q6(log_dir, results_dir)
     elif question == "Q7":
         df = q7(log_dir, results_dir)
+    elif question == "Q8":
+        q8(results_dir)
+        return
         
     df.to_csv(results_dir / f'{question}_results.csv', index=False)
 
