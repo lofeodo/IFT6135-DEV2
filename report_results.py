@@ -109,9 +109,6 @@ def q1(log_dir, results_dir):
         # Plot loss and accuracy for each model
         plot_loss_accuracy(metrics, model, results_dir)
 
-    # After collecting all results, plot comparative performances
-    plot_comparative_performance(results, results_dir)
-
     df = pd.DataFrame(results)
     return df
 

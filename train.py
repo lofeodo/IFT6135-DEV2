@@ -316,7 +316,6 @@ if __name__ == "__main__":
         "gpt"
     ]
     
-    """
     # Q1
     args = Arguments()
     for model in models:
@@ -370,7 +369,6 @@ if __name__ == "__main__":
                 print("=="*60)
                 print("Experiment finished.")
 
-    """
     # Q6
     args = Arguments()
     batch_sizes = [2**5, 2**6, 2**7, 2**8, 2**9]
