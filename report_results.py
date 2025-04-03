@@ -8,7 +8,7 @@ from checkpointing import get_extrema_performance_steps_per_trials
 import numpy as np
 import argparse
 from pathlib import Path
-from plotter import plot_loss_accuracy, plot_comparative_performance, plot_loss_accuracy_q3_a, plot_loss_accuracy_q3_b, plot_loss_accuracy_q4, plot_loss_accuracy_q5_a, plot_loss_accuracy_q5_b, plot_loss_accuracy_q6_a, plot_loss_accuracy_q6_b, plot_loss_accuracy_q7_a, plot_loss_accuracy_q7_b 
+from plotter import plot_loss_accuracy, plot_loss_accuracy_q3_a, plot_loss_accuracy_q3_b, plot_loss_accuracy_q4_a, plot_loss_accuracy_q4_b, plot_loss_accuracy_q5_a, plot_loss_accuracy_q5_b, plot_loss_accuracy_q6_a, plot_loss_accuracy_q6_b, plot_loss_accuracy_q7_a, plot_loss_accuracy_q7_b 
 from train import Arguments
 from data import get_arithmetic_dataset
 import matplotlib.pyplot as plt
@@ -173,8 +173,9 @@ def q4(log_dir, results_dir):
 
         for operation_order in operation_orders:
             metrics_per_order[operation_order] = fetch_metrics(model_dir / str(operation_order))
-
-        plot_loss_accuracy_q4(metrics_per_order, model, results_dir)
+            
+        plot_loss_accuracy_q4_a(metrics_per_order, model, results_dir / "a")
+        plot_loss_accuracy_q4_b(metrics_per_order, model, results_dir / "b")
 
         for operation_order in operation_orders:
             metrics = metrics_per_order[operation_order]
@@ -183,6 +184,14 @@ def q4(log_dir, results_dir):
             result = {
                 "Model": model,
                 "operation_order": operation_order,
+                "L_train_min": metrics_summary['min_train_loss'],
+                "L_val_min": metrics_summary['min_test_loss'],
+                "A_train_max": metrics_summary['max_train_accuracy'],
+                "A_val_max": metrics_summary['max_test_accuracy'],
+                "L_train_std": metrics_summary['min_train_loss_std'],
+                "L_val_std": metrics_summary['min_test_loss_std'],
+                "A_train_std": metrics_summary['max_train_accuracy_std'],
+                "A_val_std": metrics_summary['max_test_accuracy_std'],
                 "L_train": f"{metrics_summary['min_train_loss']:.2e} ± {metrics_summary['min_train_loss_std']:.2e}",
                 "L_val": f"{metrics_summary['min_test_loss']:.2e} ± {metrics_summary['min_test_loss_std']:.2e}",
                 "A_train": f"{metrics_summary['max_train_accuracy']:.2e} ± {metrics_summary['max_train_accuracy_std']:.2e}",
@@ -195,6 +204,7 @@ def q4(log_dir, results_dir):
                 "dt(A)": f"{metrics_summary['max_test_accuracy_step'] - metrics_summary['max_train_accuracy_step']:.2f}"
             }
             results.append(result)
+
 
     df = pd.DataFrame(results)
     return df
