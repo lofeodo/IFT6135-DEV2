@@ -878,79 +878,68 @@ def plot_loss_accuracy_q6_a(metrics_per_batch_size, model_name, results_dir):
     plt.savefig(results_dir / f'{model_name.upper()}_Q6_metrics.png', dpi=300, bbox_inches='tight')
     plt.close()
         
-def plot_loss_accuracy_q6_b(metrics_per_batch_size, model_name, results_dir):
-    """Plot training and validation curves for Q6, with batch sizes on the x-axis and different colors for each alpha."""
+def plot_loss_accuracy_q6_b(model_metrics, results_dir):
+    """Plot training and validation curves for loss, accuracy, tf(L), and tf(A) for each model."""
     results_dir.mkdir(parents=True, exist_ok=True)
     
-    # Create figure with extra space for colorbar and legend
-    fig = plt.figure(figsize=(20, 6))
-    gs = fig.add_gridspec(1, 2, width_ratios=[1, 1], wspace=0.2, hspace=0.3)
-    ax1 = fig.add_subplot(gs[0, 0])  # Loss plot
-    ax2 = fig.add_subplot(gs[0, 1])  # Accuracy plot
-    
-    batch_sizes = sorted(metrics_per_batch_size.keys())
-    alphas = sorted(metrics_per_batch_size[batch_sizes[0]].keys())
-    batch_size_values = [int(bs) for bs in batch_sizes]
-    
-    # Create colormap for alpha values
-    norm = plt.Normalize(min(alphas), max(alphas))
-    cmap = plt.cm.viridis
-    
-    for alpha in alphas:
-        color = cmap(norm(alpha))
+    # Create figures for each metric
+    metrics = ['Loss', 'Accuracy', 'tf(L)', 'tf(A)']
+    for metric in metrics:
+        fig, axs = plt.subplots(1, 2, figsize=(20, 6))
         
-        # Get metrics
-        train_losses = [metrics_per_batch_size[bs][alpha]['min_train_loss'] for bs in batch_sizes]
-        val_losses = [metrics_per_batch_size[bs][alpha]['min_test_loss'] for bs in batch_sizes]
-        train_accs = [metrics_per_batch_size[bs][alpha]['max_train_accuracy'] for bs in batch_sizes]
-        val_accs = [metrics_per_batch_size[bs][alpha]['max_test_accuracy'] for bs in batch_sizes]
+        # Create colormap for alpha values
+        alphas = sorted(list(model_metrics['gpt'].values())[0].keys())
+        norm = plt.Normalize(min(alphas), max(alphas))
+        cmap = plt.cm.viridis
         
-        # Plot losses
-        ax1.plot(batch_size_values, train_losses, 'o-', color=color, label=f'α={alpha:.1f}', lw=2)
-        ax1.plot(batch_size_values, val_losses, 's-', color=color, lw=2)
-        
-        # Plot accuracies
-        ax2.plot(batch_size_values, train_accs, 'o-', color=color, label=f'α={alpha:.1f}', lw=2)
-        ax2.plot(batch_size_values, val_accs, 's-', color=color, lw=2)
-    
-    # Configure loss axis
-    ax1.set_yscale('log')
-    ax1.set_xlabel('Batch Size (log2)', fontsize=12)
-    ax1.set_ylabel('Loss', fontsize=12)
-    ax1.set_title('Loss vs Batch Size', fontsize=12)
-    ax1.grid(True)
-    ax1.set_xscale('log', base=2)
-    ax1.set_xticks([2**i for i in range(5,10)])
-    ax1.set_xticklabels([f'{i}' for i in range(5,10)])
-    ax1.set_xlim(2**5, 2**9)
-    
-    # Configure accuracy axis  
-    ax2.set_ylim([0.0, 1.02])
-    ax2.set_xlabel('Batch Size (log2)', fontsize=12)
-    ax2.set_ylabel('Accuracy', fontsize=12)
-    ax2.set_title('Accuracy vs Batch Size', fontsize=12)
-    ax2.grid(True)
-    ax2.set_xscale('log', base=2)
-    ax2.set_xticks([2**i for i in range(5,10)])
-    ax2.set_xticklabels([f'{i}' for i in range(5,10)])
-    ax2.set_xlim(2**5, 2**9)
-    
-    # Add colorbar
-    sm = plt.cm.ScalarMappable(norm=norm, cmap=cmap)
-    cbar_ax = fig.add_axes([0.92, 0.11, 0.02, 0.77])
-    cbar = fig.colorbar(sm, cax=cbar_ax, label='α', ticks=np.arange(0.1, 1.1, 0.1))
-    
-    # Add legend
-    legend_elements = [
-        Line2D([0], [0], marker='o', color='gray', label='Train', markersize=8),
-        Line2D([0], [0], marker='s', color='gray', label='Validation', markersize=8)
-    ]
-    fig.legend(handles=legend_elements, loc='center right', bbox_to_anchor=(1.05, 0.5))
-    
-    plt.suptitle(f'Metrics vs Batch Size for {model_name.upper()}', fontsize=14)
-    plt.savefig(results_dir / f'{model_name.upper()}_Q6_metrics.png', dpi=300, bbox_inches='tight')
-    plt.close()
+        for model_idx, model_name in enumerate(['gpt', 'lstm']):
+            metrics_per_batch_size = model_metrics[model_name]
+            batch_sizes = sorted(metrics_per_batch_size.keys())
+            batch_size_values = [int(bs) for bs in batch_sizes]
+            
+            for alpha in alphas:
+                color = cmap(norm(alpha))
+                
+                # Get metrics based on the current metric type
+                if metric == 'Loss':
+                    train_values = [metrics_per_batch_size[bs][alpha]['min_train_loss'] for bs in batch_sizes]
+                    val_values = [metrics_per_batch_size[bs][alpha]['min_test_loss'] for bs in batch_sizes]
+                elif metric == 'Accuracy':
+                    train_values = [metrics_per_batch_size[bs][alpha]['max_train_accuracy'] for bs in batch_sizes]
+                    val_values = [metrics_per_batch_size[bs][alpha]['max_test_accuracy'] for bs in batch_sizes]
+                elif metric == 'tf(L)':
+                    train_values = [metrics_per_batch_size[bs][alpha]['min_train_loss_step'] for bs in batch_sizes]
+                    val_values = [metrics_per_batch_size[bs][alpha]['min_test_loss_step'] for bs in batch_sizes]
+                elif metric == 'tf(A)':
+                    train_values = [metrics_per_batch_size[bs][alpha]['max_train_accuracy_step'] for bs in batch_sizes]
+                    val_values = [metrics_per_batch_size[bs][alpha]['max_test_accuracy_step'] for bs in batch_sizes]
+                
+                # Plot training and validation values
+                axs[model_idx].plot(batch_size_values, train_values, linestyle='--', color=color, lw=2)
+                axs[model_idx].plot(batch_size_values, val_values, linestyle='-', color=color, lw=2)
 
+        # Configure axes
+        for i, model_name in enumerate(['GPT', 'LSTM']):
+            axs[i].set_xlabel('Batch Size (log2)', fontsize=12)
+            axs[i].set_ylabel(metric.capitalize(), fontsize=12)
+            axs[i].set_title(f'{model_name} {metric} vs Batch Size', fontsize=12)
+            axs[i].set_xscale('log', base=2)
+            axs[i].grid(True)
+
+        # Add single legend for train/validation
+        lines = [Line2D([0], [0], color='gray', linestyle='--', label='Train'),
+                Line2D([0], [0], color='gray', linestyle='-', label='Validation')]
+        fig.legend(handles=lines, fontsize=10, bbox_to_anchor=(1.05, 0.5), loc='center right')
+
+        # Add colorbar for alpha values
+        sm = plt.cm.ScalarMappable(norm=norm, cmap=cmap)
+        cbar_ax = fig.add_axes([0.92, 0.11, 0.02, 0.755])  # [left, bottom, width, height]
+        cbar = fig.colorbar(sm, cax=cbar_ax, label='α', ticks=np.arange(0.1, 1.1, 0.1))
+
+        plt.suptitle(f'{metric.capitalize()} vs Batch Size', fontsize=14)
+        plt.savefig(results_dir / f'{metric}_metrics.png', dpi=300, bbox_inches='tight')
+        plt.close()
+        
 def plot_loss_accuracy_q7_a(metrics_per_weight_decay, results_dir, model_name="lstm"):
     """Plot training and validation curves for Q7, with all weight decays on the same figures."""
     # Create results directory if it doesn't exist

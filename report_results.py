@@ -272,6 +272,7 @@ def q6(log_dir, results_dir):
 
     batch_sizes = [2**5, 2**6, 2**7, 2**8, 2**9]
     alphas = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+    model_metrics = {}
 
     for model in models:
         metrics_per_batch_size = {}
@@ -302,8 +303,9 @@ def q6(log_dir, results_dir):
 
             metrics_per_batch_size[batch_size] = metrics_per_alpha
 
+        model_metrics[model] = metrics_per_batch_size
         plot_loss_accuracy_q6_a(metrics_per_batch_size, model, results_dir / "a")
-        plot_loss_accuracy_q6_b(metrics_per_batch_size, model, results_dir / "b")
+    plot_loss_accuracy_q6_b(model_metrics, results_dir / "b")
 
     df = pd.DataFrame(results)
     return df
