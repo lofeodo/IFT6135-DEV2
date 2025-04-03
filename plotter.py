@@ -676,50 +676,54 @@ def plot_loss_accuracy_q5_b(results, model_name, results_dir):
     # Plot Loss vs. d (top left)
     for layer in [1, 2, 3]:
         mask = [l == layer for l in layer_values]
-        ax1.plot(np.array(d_values)[mask], np.array(L_train_values)[mask], '-o',
+        ax1.plot(np.log2(np.array(d_values)[mask]), np.array(L_train_values)[mask], '-o',
                 color=cmap(norm(layer)), alpha=0.7)
-        ax1.plot(np.array(d_values)[mask], np.array(L_eval_values)[mask], '--s',
+        ax1.plot(np.log2(np.array(d_values)[mask]), np.array(L_eval_values)[mask], '--s',
                 color=cmap(norm(layer)), alpha=0.7)
-    ax1.set_xlabel('Embedding Size')
+    ax1.set_xlabel('Embedding dimension (log2)')
     ax1.set_ylabel('Loss')
-    ax1.set_title('Loss vs. Embedding Size')
+    ax1.set_title('Loss vs. embedding dimension')
     ax1.set_yscale('log')
+    ax1.set_xticks(range(int(min(np.log2(d_values))), int(max(np.log2(d_values)))+1))
     ax1.grid(True)
 
     # Plot Accuracy vs. d (top right)
     for layer in [1, 2, 3]:
         mask = [l == layer for l in layer_values]
-        ax2.plot(np.array(d_values)[mask], np.array(A_train_values)[mask], '-o',
+        ax2.plot(np.log2(np.array(d_values)[mask]), np.array(A_train_values)[mask], '-o',
                 color=cmap(norm(layer)), alpha=0.7)
-        ax2.plot(np.array(d_values)[mask], np.array(A_eval_values)[mask], '--s',
+        ax2.plot(np.log2(np.array(d_values)[mask]), np.array(A_eval_values)[mask], '--s',
                 color=cmap(norm(layer)), alpha=0.7)
-    ax2.set_xlabel('Embedding Size')
+    ax2.set_xlabel('Embedding dimension (log2)')
     ax2.set_ylabel('Accuracy')
-    ax2.set_title('Accuracy vs. Embedding Size')
+    ax2.set_title('Accuracy vs. embedding dimension')
+    ax2.set_xticks(range(int(min(np.log2(d_values))), int(max(np.log2(d_values)))+1))
     ax2.grid(True)
 
     # Plot tf(L) vs. d (bottom left)
     for layer in [1, 2, 3]:
         mask = [l == layer for l in layer_values]
-        ax3.plot(np.array(d_values)[mask], np.array(tf_L_train_values)[mask], '-o',
+        ax3.plot(np.log2(np.array(d_values)[mask]), np.array(tf_L_train_values)[mask], '-o',
                 color=cmap(norm(layer)), alpha=0.7)
-        ax3.plot(np.array(d_values)[mask], np.array(tf_L_eval_values)[mask], '--s',
+        ax3.plot(np.log2(np.array(d_values)[mask]), np.array(tf_L_eval_values)[mask], '--s',
                 color=cmap(norm(layer)), alpha=0.7)
-    ax3.set_xlabel('Embedding Size')
+    ax3.set_xlabel('Embedding dimension (log2)')
     ax3.set_ylabel('tf(L)')
-    ax3.set_title('tf(L) vs. Embedding Size')
+    ax3.set_title('tf(L) vs. embedding dimension')
+    ax3.set_xticks(range(int(min(np.log2(d_values))), int(max(np.log2(d_values)))+1))
     ax3.grid(True)
 
     # Plot tf(A) vs. d (bottom right)
     for layer in [1, 2, 3]:
         mask = [l == layer for l in layer_values]
-        ax4.plot(np.array(d_values)[mask], np.array(tf_A_train_values)[mask], '-o',
+        ax4.plot(np.log2(np.array(d_values)[mask]), np.array(tf_A_train_values)[mask], '-o',
                 color=cmap(norm(layer)), alpha=0.7)
-        ax4.plot(np.array(d_values)[mask], np.array(tf_A_eval_values)[mask], '--s',
+        ax4.plot(np.log2(np.array(d_values)[mask]), np.array(tf_A_eval_values)[mask], '--s',
                 color=cmap(norm(layer)), alpha=0.7)
-    ax4.set_xlabel('Embedding Size')
+    ax4.set_xlabel('Embedding dimension (log2)')
     ax4.set_ylabel('tf(A)')
-    ax4.set_title('tf(A) vs. Embedding Size')
+    ax4.set_title('tf(A) vs. embedding dimension')
+    ax4.set_xticks(range(int(min(np.log2(d_values))), int(max(np.log2(d_values)))+1))
     ax4.grid(True)
 
     # Add colorbar in dedicated space on right
@@ -731,7 +735,7 @@ def plot_loss_accuracy_q5_b(results, model_name, results_dir):
              Line2D([0], [0], color='gray', linestyle='--', marker='s', label='Validation')]
     fig.legend(handles=lines, fontsize=10, bbox_to_anchor=(1.03, 0.5), loc='upper right')
 
-    plt.suptitle(f'Training Metrics vs. Embedding Size for {model_name.upper()}', fontsize=14, y=0.95)
+    plt.suptitle(f'Training Metrics vs. d for {model_name.upper()}', fontsize=14, y=0.95)
     plt.savefig(results_dir / f'{model_name.upper()}_metrics_vs_d.png', dpi=300, bbox_inches='tight')
     plt.close()
         
