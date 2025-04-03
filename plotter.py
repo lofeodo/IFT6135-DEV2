@@ -359,8 +359,108 @@ def plot_loss_accuracy_q3_b(results, model_name, results_dir):
     plt.savefig(results_dir / f'{model_name.upper()}_metrics_vs_r_train.png', dpi=300, bbox_inches='tight')
     plt.close()
 
-def plot_loss_accuracy_q4(metrics_per_order, model_name, results_dir):
+def plot_loss_accuracy_q4_a(metrics_per_order, model_name, results_dir):
+    """Plot training and validation curves for Q4, with combined loss and accuracy plots for operation orders 2 and 3."""
+    results_dir.mkdir(parents=True, exist_ok=True)
+    # Create figure with two subplots
+    fig = plt.figure(figsize=(18, 6))
+    
+    # Create colormap for orders
+    order_values = [2, 3]  # Only consider orders 2 and 3
+    norm = plt.Normalize(2, 3)
+    cmap = plt.cm.viridis
+
+    # Create figure with extra space on right for colorbar and legend
+    gs = fig.add_gridspec(1, 2, width_ratios=[1, 1], wspace=0.2, hspace=0.3)
+    ax1 = fig.add_subplot(gs[0, 0])  # Loss plot
+    ax2 = fig.add_subplot(gs[0, 1])  # Accuracy plot
+    
+    # Initialize lists to store combined metrics
+    combined_train_losses = []
+    combined_test_losses = []
+    combined_train_accs = []
+    combined_test_accs = []
+    all_steps = None
+
+    # Plot loss and accuracy for each operation order
+    for order in order_values:
+        metrics = metrics_per_order[order]
+        if all_steps is None:
+            all_steps = np.array(metrics['all_steps'][0])  # Get steps from the first order
+        
+        # Calculate means and standard deviations
+        train_losses = np.array(metrics['train']['loss'])
+        test_losses = np.array(metrics['test']['loss'])
+        train_accs = np.array(metrics['train']['accuracy'])
+        test_accs = np.array(metrics['test']['accuracy'])
+        
+        # Combine metrics
+        combined_train_losses.append(np.mean(train_losses, axis=0))
+        combined_test_losses.append(np.mean(test_losses, axis=0))
+        combined_train_accs.append(np.mean(train_accs, axis=0))
+        combined_test_accs.append(np.mean(test_accs, axis=0))
+
+    # Calculate overall means and standard deviations for combined metrics
+    combined_train_loss_mean = np.mean(combined_train_losses, axis=0)
+    combined_test_loss_mean = np.mean(combined_test_losses, axis=0)
+    combined_train_acc_mean = np.mean(combined_train_accs, axis=0)
+    combined_test_acc_mean = np.mean(combined_test_accs, axis=0)
+
+    # Calculate standard deviations
+    combined_train_loss_std = np.std(combined_train_losses, axis=0)
+    combined_test_loss_std = np.std(combined_test_losses, axis=0)
+    combined_train_acc_std = np.std(combined_train_accs, axis=0)
+    combined_test_acc_std = np.std(combined_test_accs, axis=0)
+
+    # Plot losses
+    train_color = cmap(norm(2))  # Use color for order 2
+    test_color = cmap(norm(3))  # Use color for order 3
+    ax1.plot(all_steps, combined_train_loss_mean, '--', color=train_color, alpha=0.7, label='Train')
+    ax1.fill_between(all_steps, combined_train_loss_mean - combined_train_loss_std, 
+                     combined_train_loss_mean + combined_train_loss_std, color=train_color, alpha=0.1)
+    ax1.plot(all_steps, combined_test_loss_mean, '-', color=test_color, alpha=0.7, label='Validation')
+    ax1.fill_between(all_steps, combined_test_loss_mean - combined_test_loss_std, 
+                     combined_test_loss_mean + combined_test_loss_std, color=test_color, alpha=0.1)
+
+    # Plot accuracies
+    ax2.plot(all_steps, combined_train_acc_mean, '--', color=train_color, alpha=0.7, label='Train')
+    ax2.fill_between(all_steps, combined_train_acc_mean - combined_train_acc_std, 
+                     combined_train_acc_mean + combined_train_acc_std, color=train_color, alpha=0.1)
+    ax2.plot(all_steps, combined_test_acc_mean, '-', color=test_color, alpha=0.7, label='Validation')
+    ax2.fill_between(all_steps, combined_test_acc_mean - combined_test_acc_std, 
+                     combined_test_acc_mean + combined_test_acc_std, color=test_color, alpha=0.1)
+
+    # Set axis labels and scales
+    ax1.set_xlabel('Training Steps (t)', fontsize=12)
+    ax2.set_xlabel('Training Steps (t)', fontsize=12)
+    ax1.set_ylabel('Loss', fontsize=12)
+    ax2.set_ylabel('Accuracy', fontsize=12)
+    
+    ax1.set_yscale('log')
+    
+    # Set axis limits
+    ax1.set_xlim(0, 10000)
+    ax2.set_xlim(0, 10000)
+    ax2.set_ylim(0, 1.02)
+    
+    # Add titles and grid
+    ax1.set_title('Loss vs Steps', fontsize=12)
+    ax2.set_title('Accuracy vs Steps', fontsize=12)
+    ax1.grid(True)
+    ax2.grid(True)
+    
+    # Add legend
+    ax1.legend(loc='upper right')
+    ax2.legend(loc='upper right')
+
+    plt.suptitle(f'Metrics vs Steps for {model_name.upper()}', fontsize=12)
+    plt.tight_layout()
+    plt.savefig(results_dir / f'{model_name.upper()}_Q4_metrics_combined.png', dpi=300, bbox_inches='tight')
+    plt.close()
+    
+def plot_loss_accuracy_q4_b(metrics_per_order, model_name, results_dir):
     """Plot training and validation curves for Q4, with separate loss and accuracy plots."""
+    results_dir.mkdir(parents=True, exist_ok=True)
     # Create figure with two subplots
     fig = plt.figure(figsize=(18, 6))
     
@@ -542,7 +642,7 @@ def plot_loss_accuracy_q5_a(metrics_per_layer, model_name, results_dir):
         plt.savefig(results_dir / f'{model_name.upper()}_Q5_L{layer}_combined.png', 
                    dpi=300, bbox_inches='tight', pad_inches=0.2)
         plt.close()
-
+        
 def plot_loss_accuracy_q5_b(results, model_name, results_dir):
     """Plot training and validation curves for Q5, with separate figures for each metric, as a function of embedding size d."""
     # Create results directory if it doesn't exist
@@ -634,7 +734,7 @@ def plot_loss_accuracy_q5_b(results, model_name, results_dir):
     plt.suptitle(f'Training Metrics vs. Embedding Size for {model_name.upper()}', fontsize=14, y=0.95)
     plt.savefig(results_dir / f'{model_name.upper()}_metrics_vs_d.png', dpi=300, bbox_inches='tight')
     plt.close()
-
+        
     plot_loss_accuracy_q5_b_params(results, model_name, results_dir)
 
 def plot_loss_accuracy_q5_b_params(results, model_name, results_dir):
@@ -773,7 +873,7 @@ def plot_loss_accuracy_q6_a(metrics_per_batch_size, model_name, results_dir):
     plt.suptitle(f'Training Metrics vs αT for {model_name.upper()}', fontsize=14, y=0.95)
     plt.savefig(results_dir / f'{model_name.upper()}_Q6_metrics.png', dpi=300, bbox_inches='tight')
     plt.close()
-
+        
 def plot_loss_accuracy_q6_b(metrics_per_batch_size, model_name, results_dir):
     """Plot training and validation curves for Q6, with batch sizes on the x-axis and different colors for each alpha."""
     results_dir.mkdir(parents=True, exist_ok=True)
